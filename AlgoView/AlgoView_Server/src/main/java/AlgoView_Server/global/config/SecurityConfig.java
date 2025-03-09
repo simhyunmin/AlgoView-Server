@@ -12,7 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @RequiredArgsConstructor
 @EnableWebSecurity
-public class SecurityConfig {
+public class SecurityConfig  {
 
     private final CustomOAuth2UserService customOAuth2UserService;
 
@@ -29,7 +29,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests((authorizeRequest) -> authorizeRequest
                         .requestMatchers("/posts/new", "/comments/save").hasRole(Role.USER.name())
-                        .requestMatchers("/", "/css/**", "images/**", "/js/**", "/login/*", "/logout/*", "/posts/**", "/comments/**").permitAll()
+                        .requestMatchers("/**", "/analysis/api/upload", "/css/**", "images/**", "/js/**", "/login/*", "/logout/*", "/posts/**", "/comments/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .logout( // 로그아웃 성공 시 / 주소로 이동

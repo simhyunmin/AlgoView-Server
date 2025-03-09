@@ -60,6 +60,12 @@ dependencies {
 	// P6Spy Spring Boot Starter 의존성
 	implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
 
+	//jsoup 의존성 추가
+	implementation 'org.jsoup:jsoup:1.15.3'
+
+	//csv 의존성 추가
+	implementation 'org.apache.commons:commons-csv:1.9.0'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

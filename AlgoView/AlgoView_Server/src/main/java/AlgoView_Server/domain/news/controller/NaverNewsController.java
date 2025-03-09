@@ -25,17 +25,14 @@ public class NaverNewsController {
 
     @GetMapping("/news")
     public String getNews() {
-        @Value("${naver.clientId}")
-        private String clientId;
-
-        @Value("${naver.clientSecret}")
-        private String clientSecret;
+        String clientId = "Pa5Sa3HtfQ9xTZuyRQWP"; //애플리케이션 클라이언트 아이디
+        String clientSecret = "PRkum77Vx_"; //애플리케이션 클라이언트 시크릿
 
 
         String query = null;
         Integer display = 20;
         try {
-            query = URLEncoder.encode("AI", "UTF-8");
+            query = URLEncoder.encode("야구", "UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException("검색어 인코딩 실패",e);
         }
