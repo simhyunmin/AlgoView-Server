@@ -1,12 +1,6 @@
 package AlgoView_Server.global.analysis.controller;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,116 +17,13 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
-import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 
 
 @RestController
 public class AnalysisController {
-
-//    @PostMapping(value = "/api/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    public ResponseEntity<?> processAnalysis(
-//            @RequestParam("historyFile") MultipartFile historyFile,
-//            @RequestParam("subscriptionsFile") MultipartFile subscriptionsFile) {
-//
-//        try {
-//            // 분석 ID 생성
-//            String analysisId = UUID.randomUUID().toString();
-//
-//            // HTML 파일 파싱
-//            String historyContent = new String(historyFile.getBytes(), StandardCharsets.UTF_8);
-//            Map<String, Object> historyData = parseHtmlFile(historyContent);
-//
-//            // CSV 파일 파싱
-//            String subscriptionsContent = new String(subscriptionsFile.getBytes(), StandardCharsets.UTF_8);
-//            List<Map<String, String>> subscriptionsData = parseCsvFile(subscriptionsContent);
-//
-//            // 전송할 JSON 데이터 구성
-//            Map<String, Object> requestData = new HashMap<>();
-//            requestData.put("history_file", historyData);
-//            requestData.put("subscriptions_file", subscriptionsData);
-//
-//            // FastAPI 서버 URL
-//            String analysisUrl = "http://127.0.0.1:8000/api/v1/analysis/" + analysisId;
-//
-//            // JSON 데이터 전송을 위한 RestTemplate 설정
-//            RestTemplate restTemplate = new RestTemplate();
-//
-//            // HTTP 요청 헤더 설정
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.APPLICATION_JSON);
-//
-//            // HTTP 엔티티 생성
-//            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestData, headers);
-//
-//            // FastAPI 서버로 POST 요청 전송
-//            ResponseEntity<Map> response = restTemplate.postForEntity(
-//                    analysisUrl,
-//                    requestEntity,
-//                    Map.class
-//            );
-//
-//            // FastAPI 서버의 응답을 클라이언트에게 전달
-//            return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(Map.of("status", "error", "message", e.getMessage()));
-//        }
-//    }
-//
-//    // HTML 파일 파싱 메서드
-//    private Map<String, Object> parseHtmlFile(String htmlContent) {
-//        Map<String, Object> result = new HashMap<>();
-//
-//        try {
-//            // Jsoup 라이브러리를 사용하여 HTML 파싱
-//            Document doc = Jsoup.parse(htmlContent);
-//
-//            // 예시: 모든 비디오 제목 추출
-//            // 실제 구현은 HTML 구조에 따라 달라짐
-//            List<String> videoTitles = new ArrayList<>();
-//            Elements titleElements = doc.select(".video-title");// 실제 CSS 선택자로 변경 필요
-//
-//            for (Element element : titleElements) {
-//                videoTitles.add(element.text());
-//            }
-//
-//            result.put("video_titles", videoTitles);
-//            // 필요한 다른 데이터 추출 및 추가
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            result.put("error", "HTML 파싱 중 오류 발생: " + e.getMessage());
-//        }
-//
-//        return result;
-//    }
-//
-//    // CSV 파일 파싱 메서드
-//    private List<Map<String, String>> parseCsvFile(String csvContent) {
-//        List<Map<String, String>> result = new ArrayList<>();
-//
-//        try (BufferedReader reader = new BufferedReader(new StringReader(csvContent))) {
-//            // Apache Commons CSV 라이브러리 사용
-//            CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
-//
-//            for (CSVRecord record : csvParser) {
-//                Map<String, String> row = new HashMap<>();
-//                for (String header : csvParser.getHeaderMap().keySet()) {
-//                    row.put(header, record.get(header));
-//                }
-//                result.add(row);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//        return result;
-//    }
-
 
     @GetMapping("/upload")
     public String uploadPage() {
@@ -151,18 +42,30 @@ public class AnalysisController {
             // FastAPI 서버 URL (엔드포인트에 맞게 조정)
             String analysisUrl = "http://127.0.0.1:8000/api/v1/analysis/" + analysisId;
 
+            // 히스토리 파일은 그대로 전달 (이미 JSON임)
+            byte[] historyBytes = historyFile.getBytes();
+
+            // 구독 파일이 CSV인 경우 JSON으로 변환
+            byte[] subscriptionsBytes;
+            if (subscriptionsFile.getOriginalFilename().toLowerCase().endsWith(".csv")) {
+                subscriptionsBytes = convertCsvToJson(subscriptionsFile);
+            } else {
+                // 이미 JSON 파일이면 그대로 사용
+                subscriptionsBytes = subscriptionsFile.getBytes();
+            }
+
             // 파일 데이터를 multipart로 구성
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("history_file", new ByteArrayResource(historyFile.getBytes()){
+            body.add("history_file", new ByteArrayResource(historyBytes) {
                 @Override
                 public String getFilename() {
-                    return historyFile.getOriginalFilename();
+                    return "history.json";
                 }
             });
-            body.add("subscriptions_file", new ByteArrayResource(subscriptionsFile.getBytes()){
+            body.add("subscriptions_file", new ByteArrayResource(subscriptionsBytes) {
                 @Override
                 public String getFilename() {
-                    return subscriptionsFile.getOriginalFilename();
+                    return "subscriptions.json";
                 }
             });
 
@@ -184,4 +87,75 @@ public class AnalysisController {
         }
     }
 
+    /**
+     * CSV 파일을 JSON 형식으로 변환
+     * 예상 CSV 형식: 채널 ID, 채널 URL, 채널 제목 (헤더 포함)
+     * 변환될 JSON 형식: [{"채널 ID": "xxx", "채널 URL": "yyy", "채널 제목": "zzz"}, ...]
+     */
+    private byte[] convertCsvToJson(MultipartFile csvFile) throws IOException {
+        List<Map<String, String>> jsonData = new ArrayList<>();
+
+        // CSV 파일 읽기
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvFile.getInputStream()))) {
+            String line;
+            String[] headers = null;
+
+            // 첫 번째 줄 (헤더) 읽기
+            if ((line = reader.readLine()) != null) {
+                headers = line.split(",");
+                // 따옴표 제거 및 공백 제거
+                for (int i = 0; i < headers.length; i++) {
+                    headers[i] = headers[i].replace("\"", "").trim();
+                }
+            }
+
+            // 데이터 행 읽기
+            while ((line = reader.readLine()) != null) {
+                String[] values = parseCSVLine(line);
+
+                if (headers != null && values.length >= headers.length) {
+                    Map<String, String> entry = new HashMap<>();
+
+                    for (int i = 0; i < headers.length; i++) {
+                        entry.put(headers[i], values[i]);
+                    }
+
+                    jsonData.add(entry);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // JSON으로 변환
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.writeValueAsBytes(jsonData);
+    }
+
+    /**
+     * CSV 라인을 파싱하는 메소드 (따옴표로 묶인 값과 쉼표를 올바르게 처리)
+     */
+    private String[] parseCSVLine(String line) {
+        List<String> result = new ArrayList<>();
+        StringBuilder currentValue = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char currentChar = line.charAt(i);
+
+            if (currentChar == '\"') {
+                inQuotes = !inQuotes;
+            } else if (currentChar == ',' && !inQuotes) {
+                result.add(currentValue.toString().replace("\"", "").trim());
+                currentValue = new StringBuilder();
+            } else {
+                currentValue.append(currentChar);
+            }
+        }
+
+        // 마지막 값 추가
+        result.add(currentValue.toString().replace("\"", "").trim());
+
+        return result.toArray(new String[0]);
+    }
 }

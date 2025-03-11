@@ -11,4 +11,5 @@ public class NewsDto {
     private String title;
     private String description;
     private String link;
+    private String keyword;
 }
