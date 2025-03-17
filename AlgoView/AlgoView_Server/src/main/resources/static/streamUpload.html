@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube 데이터 분석 스트리밍</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        button {
+            background-color: #d9230f;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #loading {
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        #error {
+            color: #d9230f;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>YouTube 데이터 분석 스트리밍</h1>
+    <div class="card">
+        <form id="analysisForm">
+            <label for="historyFile">History 파일 (JSON):</label>
+            <input type="file" id="historyFile" name="historyFile" accept=".json" required>
+            <label for="subscriptionsFile">Subscriptions 파일 (JSON/CSV):</label>
+            <input type="file" id="subscriptionsFile" name="subscriptionsFile" accept=".json,.csv" required>
+            <button type="submit" id="submitBtn">분석 시작</button>
+        </form>
+    </div>
+
+    <div id="loading">분석 중입니다...</div>
+
+    <div class="card" id="resultHourly" style="display:none;">
+        <h2>시간대별 통계 분석</h2>
+        <pre id="resultHourlyContent"></pre>
+    </div>
+
+    <div class="card" id="resultKeyword" style="display:none;">
+        <h2>키워드 빈도 분석</h2>
+        <pre id="resultKeywordContent"></pre>
+    </div>
+
+    <div class="card" id="resultLLM" style="display:none;">
+        <h2>LLM 분석</h2>
+        <pre id="resultLLMContent"></pre>
+    </div>
+
+    <div id="error"></div>
+</div>
+
+<script>
+    document.getElementById('analysisForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // 이전 에러/결과 초기화
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('resultHourly').style.display = 'none';
+        document.getElementById('resultKeyword').style.display = 'none';
+        document.getElementById('resultLLM').style.display = 'none';
+
+        // 로딩 표시 및 버튼 비활성화
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('submitBtn').disabled = true;
+
+        // FormData 생성
+        const formData = new FormData();
+        const historyFile = document.getElementById('historyFile').files[0];
+        const subscriptionsFile = document.getElementById('subscriptionsFile').files[0];
+        formData.append('historyFile', historyFile);
+        formData.append('subscriptionsFile', subscriptionsFile);
+
+        try {
+            // 파일 업로드 및 분석 요청 (POST /api/analyze)
+            const uploadResponse = await fetch('/api/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            if (!uploadResponse.ok) {
+                const errData = await uploadResponse.json();
+                throw new Error(errData.message || '분석 요청 실패');
+            }
+            // 업로드가 성공하면 서버는 분석 처리를 시작하고, SSE 이벤트는 /api/analyze/stream에서 전송됨.
+
+            // SSE 연결 (GET /api/analyze/stream)
+            const eventSource = new EventSource('/api/analyze/stream');
+            let eventCount = 0;
+
+            eventSource.onmessage = function(event) {
+                // 수신된 이벤트 데이터는 JSON 문자열이어야 하며,
+                // 예시: {"type": "hourlyStats", "status": "success", "data": {...}}
+                try {
+                    const data = JSON.parse(event.data);
+                    // 연결 확인 이벤트 무시 (또는 콘솔에 출력)
+                    if(data.status && data.status === 'connected'){
+                        console.log("SSE 연결 성공:", data.message);
+                        return;
+                    }
+                    // 이벤트 type에 따라 결과 출력
+                    if(data.type === 'hourlyStats') {
+                        document.getElementById('resultHourlyContent').textContent = JSON.stringify(data, null, 2);
+                        document.getElementById('resultHourly').style.display = 'block';
+                    } else if(data.type === 'keywordFrequency') {
+                        document.getElementById('resultKeywordContent').textContent = JSON.stringify(data, null, 2);
+                        document.getElementById('resultKeyword').style.display = 'block';
+                    } else if(data.type === 'llmAnalysis') {
+                        document.getElementById('resultLLMContent').textContent = data.data;
+                        document.getElementById('resultLLM').style.display = 'block';
+                    }
+                    eventCount++;
+                    // 총 3번의 분석 결과를 받으면 SSE 연결 종료
+                    if(eventCount >= 3) {
+                        eventSource.close();
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('submitBtn').disabled = false;
+                    }
+                } catch (err) {
+                    console.error("이벤트 데이터 파싱 오류:", err);
+                }
+            };
+
+            eventSource.onerror = function(err) {
+                console.error("SSE 연결 에러:", err);
+                document.getElementById('error').textContent = 'SSE 연결 오류 발생';
+                document.getElementById('error').style.display = 'block';
+                eventSource.close();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+            };
+        } catch (error) {
+            document.getElementById('error').textContent = error.message;
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

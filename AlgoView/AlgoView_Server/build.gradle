@@ -29,6 +29,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+	//HttpClinet 의존성
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
 	//h2 DB
 	runtimeOnly 'com.h2database:h2'
 
