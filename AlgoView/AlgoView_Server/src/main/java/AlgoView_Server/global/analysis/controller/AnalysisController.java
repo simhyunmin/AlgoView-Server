@@ -31,7 +31,7 @@ public class AnalysisController {
     }
 
     @PostMapping(value = "/api/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> processAnalysis(
+    public ResponseEntity<?> processAnalysi1s(
             @RequestParam("historyFile") MultipartFile historyFile,
             @RequestParam("subscriptionsFile") MultipartFile subscriptionsFile) {
 

@@ -2,187 +2,526 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>YouTube 데이터 분석 스트리밍</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 분석 스트리밍</title>
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
-            max-width: 900px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f8f9fa;
             color: #333;
         }
         .container {
-            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
         .card {
-            background: white;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
             padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .file-upload {
             margin-bottom: 20px;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .file-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .file-input-group label {
             font-weight: bold;
         }
-        input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: #f8f9fa;
+        .file-name {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #555;
         }
         button {
-            background-color: #d9230f;
+            padding: 10px 15px;
+            background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
         }
         button:disabled {
-            background-color: #ccc;
+            background-color: #cccccc;
             cursor: not-allowed;
         }
-        #loading {
-            text-align: center;
-            font-weight: bold;
-            display: none;
+        .analysis-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
         }
-        pre {
-            background-color: #eee;
+        .analysis-section {
+            position: relative;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending {
+            background-color: #f0f0f0;
+            color: #666;
+        }
+        .status-processing {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .hour-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .hour-bar-label {
+            width: 40px;
+            text-align: right;
+            margin-right: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        .hour-bar-fill {
+            height: 24px;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            border-radius: 3px;
+            transition: width 0.5s ease-out;
+            min-width: 30px;
+        }
+        .keyword-item {
+            background-color: #f0f8ff;
+            padding: 6px 12px;
+            margin: 5px 0;
+            border-radius: 15px;
+            display: inline-block;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .keyword-count {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .category-name {
+            font-weight: 500;
+        }
+        .category-count {
+            font-weight: bold;
+        }
+        #log-container {
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
             padding: 10px;
             border-radius: 4px;
-            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            font-size: 14px;
         }
-        #error {
-            color: #d9230f;
-            font-weight: bold;
-            display: none;
+        .log-entry {
+            margin: 3px 0;
+            padding: 2px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        .timestamp {
+            color: #666;
+            margin-right: 8px;
+        }
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4CAF50;
+            transition: width 0.3s;
+        }
+        #llm-analysis {
+            margin-top: 15px;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+        @media (max-width: 768px) {
+            .analysis-sections {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>YouTube 데이터 분석 스트리밍</h1>
-    <div class="card">
-        <form id="analysisForm">
-            <label for="historyFile">History 파일 (JSON):</label>
-            <input type="file" id="historyFile" name="historyFile" accept=".json" required>
-            <label for="subscriptionsFile">Subscriptions 파일 (JSON/CSV):</label>
-            <input type="file" id="subscriptionsFile" name="subscriptionsFile" accept=".json,.csv" required>
-            <button type="submit" id="submitBtn">분석 시작</button>
+    <h1>유튜브 데이터 분석 스트리밍</h1>
+
+    <div class="card file-upload">
+        <h2>파일 업로드</h2>
+        <div class="progress-container">
+            <div class="progress-bar" id="upload-progress"></div>
+        </div>
+        <form id="upload-form" class="upload-form">
+            <div class="file-input-group">
+                <label for="historyFile">히스토리 파일 (JSON)</label>
+                <input type="file" id="historyFile" name="historyFile" accept=".json">
+                <div class="file-name" id="history-filename"></div>
+            </div>
+
+            <div class="file-input-group">
+                <label for="subscriptionsFile">구독 파일 (JSON/CSV)</label>
+                <input type="file" id="subscriptionsFile" name="subscriptionsFile" accept=".json,.csv">
+                <div class="file-name" id="subscriptions-filename"></div>
+            </div>
+
+            <button type="submit" id="submit-button">분석 시작</button>
         </form>
     </div>
 
-    <div id="loading">분석 중입니다...</div>
+    <div class="analysis-sections">
+        <div class="card analysis-section">
+            <div class="section-header">
+                <h2>시간대별 통계</h2>
+                <span class="status-badge status-pending" id="hourly-status">대기 중</span>
+            </div>
+            <div id="hourly-stats">데이터를 기다리는 중...</div>
+        </div>
 
-    <div class="card" id="resultHourly" style="display:none;">
-        <h2>시간대별 통계 분석</h2>
-        <pre id="resultHourlyContent"></pre>
+        <div class="card analysis-section">
+            <div class="section-header">
+                <h2>키워드 분석</h2>
+                <span class="status-badge status-pending" id="keyword-status">대기 중</span>
+            </div>
+            <div id="keyword-stats">데이터를 기다리는 중...</div>
+        </div>
+
+        <div class="card analysis-section">
+            <div class="section-header">
+                <h2>AI 분석 결과</h2>
+                <span class="status-badge status-pending" id="llm-status">대기 중</span>
+            </div>
+            <div id="llm-analysis">데이터를 기다리는 중...</div>
+        </div>
     </div>
 
-    <div class="card" id="resultKeyword" style="display:none;">
-        <h2>키워드 빈도 분석</h2>
-        <pre id="resultKeywordContent"></pre>
+    <div class="card">
+        <h2>로그</h2>
+        <div id="log-container"></div>
     </div>
-
-    <div class="card" id="resultLLM" style="display:none;">
-        <h2>LLM 분석</h2>
-        <pre id="resultLLMContent"></pre>
-    </div>
-
-    <div id="error"></div>
 </div>
 
 <script>
-    document.getElementById('analysisForm').addEventListener('submit', async function(e) {
+    // 전역 변수
+    let eventSource = null;
+    let analysisId = null;
+
+    // 로그 함수
+    function log(message) {
+        const logContainer = document.getElementById('log-container');
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        logEntry.innerHTML = `<span class="timestamp">${timeString}</span> ${message}`;
+
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // 파일 선택 이벤트 처리
+    document.getElementById('historyFile').addEventListener('change', function() {
+        const filename = this.files.length > 0 ? this.files[0].name : '선택된 파일 없음';
+        document.getElementById('history-filename').textContent = filename;
+    });
+
+    document.getElementById('subscriptionsFile').addEventListener('change', function() {
+        const filename = this.files.length > 0 ? this.files[0].name : '선택된 파일 없음';
+        document.getElementById('subscriptions-filename').textContent = filename;
+    });
+
+    // 폼 제출 처리
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        // 이전 에러/결과 초기화
-        document.getElementById('error').style.display = 'none';
-        document.getElementById('resultHourly').style.display = 'none';
-        document.getElementById('resultKeyword').style.display = 'none';
-        document.getElementById('resultLLM').style.display = 'none';
-
-        // 로딩 표시 및 버튼 비활성화
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('submitBtn').disabled = true;
-
-        // FormData 생성
-        const formData = new FormData();
         const historyFile = document.getElementById('historyFile').files[0];
         const subscriptionsFile = document.getElementById('subscriptionsFile').files[0];
+
+        if (!historyFile || !subscriptionsFile) {
+            alert('두 파일을 모두 선택해주세요.');
+            return;
+        }
+
+        // 분석 ID 생성 (간단한 방법)
+        analysisId = Date.now().toString();
+
+        // 폼 데이터 구성
+        const formData = new FormData();
         formData.append('historyFile', historyFile);
         formData.append('subscriptionsFile', subscriptionsFile);
 
-        try {
-            // 파일 업로드 및 분석 요청 (POST /api/analyze)
-            const uploadResponse = await fetch('/api/analyze', {
-                method: 'POST',
-                body: formData
-            });
-            if (!uploadResponse.ok) {
-                const errData = await uploadResponse.json();
-                throw new Error(errData.message || '분석 요청 실패');
+        // 진행 표시 초기화
+        document.getElementById('upload-progress').style.width = '0%';
+
+        // 상태 초기화
+        document.getElementById('hourly-status').className = 'status-badge status-pending';
+        document.getElementById('hourly-status').textContent = '대기 중';
+        document.getElementById('keyword-status').className = 'status-badge status-pending';
+        document.getElementById('keyword-status').textContent = '대기 중';
+        document.getElementById('llm-status').className = 'status-badge status-pending';
+        document.getElementById('llm-status').textContent = '대기 중';
+
+        document.getElementById('hourly-stats').textContent = '데이터를 기다리는 중...';
+        document.getElementById('keyword-stats').textContent = '데이터를 기다리는 중...';
+        document.getElementById('llm-analysis').textContent = '데이터를 기다리는 중...';
+
+        // 로그 초기화
+        document.getElementById('log-container').innerHTML = '';
+
+        // 제출 버튼 비활성화
+        const submitButton = document.getElementById('submit-button');
+        submitButton.disabled = true;
+        submitButton.textContent = '분석 중...';
+
+        log('파일 업로드 시작');
+
+        // 파일 업로드 AJAX 요청
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/upload`, true);
+
+        // 업로드 진행 상황 처리
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                document.getElementById('upload-progress').style.width = percentComplete + '%';
             }
-            // 업로드가 성공하면 서버는 분석 처리를 시작하고, SSE 이벤트는 /api/analyze/stream에서 전송됨.
+        };
 
-            // SSE 연결 (GET /api/analyze/stream)
-            const eventSource = new EventSource('/api/analyze/stream');
-            let eventCount = 0;
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                log('파일 업로드 완료, 분석 시작');
 
-            eventSource.onmessage = function(event) {
-                // 수신된 이벤트 데이터는 JSON 문자열이어야 하며,
-                // 예시: {"type": "hourlyStats", "status": "success", "data": {...}}
-                try {
-                    const data = JSON.parse(event.data);
-                    // 연결 확인 이벤트 무시 (또는 콘솔에 출력)
-                    if(data.status && data.status === 'connected'){
-                        console.log("SSE 연결 성공:", data.message);
-                        return;
-                    }
-                    // 이벤트 type에 따라 결과 출력
-                    if(data.type === 'hourlyStats') {
-                        document.getElementById('resultHourlyContent').textContent = JSON.stringify(data, null, 2);
-                        document.getElementById('resultHourly').style.display = 'block';
-                    } else if(data.type === 'keywordFrequency') {
-                        document.getElementById('resultKeywordContent').textContent = JSON.stringify(data, null, 2);
-                        document.getElementById('resultKeyword').style.display = 'block';
-                    } else if(data.type === 'llmAnalysis') {
-                        document.getElementById('resultLLMContent').textContent = data.data;
-                        document.getElementById('resultLLM').style.display = 'block';
-                    }
-                    eventCount++;
-                    // 총 3번의 분석 결과를 받으면 SSE 연결 종료
-                    if(eventCount >= 3) {
-                        eventSource.close();
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('submitBtn').disabled = false;
-                    }
-                } catch (err) {
-                    console.error("이벤트 데이터 파싱 오류:", err);
-                }
-            };
+                // 업로드 완료 후 서버 보냄 이벤트(SSE) 연결 시작
+                startEventSource(analysisId);
+            } else {
+                log('오류: ' + xhr.statusText);
+                submitButton.disabled = false;
+                submitButton.textContent = '분석 시작';
+                alert('파일 업로드 중 오류가 발생했습니다.');
+            }
+        };
 
-            eventSource.onerror = function(err) {
-                console.error("SSE 연결 에러:", err);
-                document.getElementById('error').textContent = 'SSE 연결 오류 발생';
-                document.getElementById('error').style.display = 'block';
-                eventSource.close();
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('submitBtn').disabled = false;
-            };
-        } catch (error) {
-            document.getElementById('error').textContent = error.message;
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('submitBtn').disabled = false;
+        xhr.onerror = function() {
+            log('네트워크 오류 발생');
+            submitButton.disabled = false;
+            submitButton.textContent = '분석 시작';
+            alert('네트워크 오류가 발생했습니다.');
+        };
+
+        xhr.send(formData);
+    });
+
+    // 서버 보낸 이벤트(SSE) 연결 시작
+    function startEventSource(test) {
+        // 기존 연결이 있으면 닫기
+        if (eventSource) {
+            eventSource.close();
         }
+
+        log(`분석 ID: test로 스트리밍 연결 시작`);
+
+        // 새 SSE 연결 설정
+        eventSource = new EventSource(`/api/analysis-stream/test`);
+
+        // 연결 성공 처리
+        eventSource.onopen = function() {
+            log('스트리밍 연결 성공');
+        };
+
+        // 시간대별 통계 데이터 처리
+        eventSource.addEventListener('hourlyStats', function(event) {
+            log('시간대별 통계 데이터 수신');
+            const data = JSON.parse(event.data);
+            updateHourlyStats(data);
+        });
+
+        // 키워드 데이터 처리
+        eventSource.addEventListener('keywordFrequency', function(event) {
+            log('키워드 분석 데이터 수신');
+            const data = JSON.parse(event.data);
+            updateKeywords(data);
+        });
+
+        // LLM 분석 결과 처리
+        eventSource.addEventListener('llmAnalysis', function(event) {
+            log('AI 분석 결과 수신');
+            const data = JSON.parse(event.data);
+            updateLLMAnalysis(data);
+        });
+
+        // 분석 완료 처리
+        eventSource.addEventListener('analysisComplete', function() {
+            log('분석 완료');
+            eventSource.close();
+
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = false;
+            submitButton.textContent = '분석 시작';
+
+            log('스트리밍 연결 종료');
+        });
+
+        // 오류 처리
+        eventSource.onerror = function() {
+            log('스트리밍 연결 오류');
+            eventSource.close();
+
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = false;
+            submitButton.textContent = '분석 시작';
+        };
+    }
+
+    // 시간대별 통계 업데이트
+    function updateHourlyStats(data) {
+        const hourlyStats = document.getElementById('hourly-stats');
+        const statusBadge = document.getElementById('hourly-status');
+
+        // 상태 업데이트
+        statusBadge.className = 'status-badge status-completed';
+        statusBadge.textContent = '완료';
+
+        log('시간대별 통계 업데이트 시작');
+
+        // 데이터가 없는 경우
+        if (!data.data || !data.data.hourlyStats || data.data.hourlyStats.length === 0) {
+            hourlyStats.textContent = '시간대별 데이터가 없습니다.';
+            return;
+        }
+
+        // 최대 조회수 찾기
+        const maxViews = Math.max(...data.data.hourlyStats.map(item => item.totalViews));
+
+        // HTML 구성
+        let html = '';
+
+        data.data.hourlyStats.forEach(hour => {
+            // 퍼센트 계산 (최대값 대비)
+            const percentage = maxViews === 0 ? 0 : (hour.totalViews / maxViews * 100);
+
+            html += `
+                    <div class="hour-bar">
+                        <div class="hour-bar-label">${hour.hour}시</div>
+                        <div class="hour-bar-fill" style="width: ${percentage}%">
+                            ${hour.totalViews > 0 ? hour.totalViews : ''}
+                        </div>
+                    </div>
+                `;
+        });
+
+        hourlyStats.innerHTML = html;
+        log('시간대별 통계 업데이트 완료');
+    }
+
+    // 키워드 업데이트
+    function updateKeywords(data) {
+        const keywordStats = document.getElementById('keyword-stats');
+        const statusBadge = document.getElementById('keyword-status');
+
+        // 상태 업데이트
+        statusBadge.className = 'status-badge status-completed';
+        statusBadge.textContent = '완료';
+
+        log('키워드 분석 업데이트 시작');
+
+        // 데이터가 없는 경우
+        if (!data.data || !data.data.keywordFrequency || data.data.keywordFrequency.length === 0) {
+            keywordStats.textContent = '키워드 데이터가 없습니다.';
+            return;
+        }
+
+        // 빈도 기준 내림차순 정렬
+        const sortedKeywords = [...data.data.keywordFrequency].sort((a, b) => b.frequency - a.frequency);
+
+        // HTML 구성
+        let html = '';
+
+        sortedKeywords.forEach(kw => {
+            html += `
+                    <div class="keyword-item">
+                        ${kw.keyword} <span class="keyword-count">${kw.frequency}</span>
+                    </div>
+                `;
+        });
+
+        keywordStats.innerHTML = html;
+        log('키워드 분석 업데이트 완료');
+    }
+
+    // LLM 분석 결과 업데이트
+    function updateLLMAnalysis(data) {
+        const llmAnalysis = document.getElementById('llm-analysis');
+        const statusBadge = document.getElementById('llm-status');
+
+        // 상태 업데이트
+        statusBadge.className = 'status-badge status-completed';
+        statusBadge.textContent = '완료';
+
+        log('AI 분석 업데이트 시작');
+
+        // 데이터가 없는 경우
+        if (!data.data || !data.data.llmAnalysis) {
+            llmAnalysis.textContent = 'AI 분석 데이터가 없습니다.';
+            return;
+        }
+
+        llmAnalysis.textContent = data.data.llmAnalysis;
+        log('AI 분석 업데이트 완료');
+    }
+
+    // 페이지 로드 시 초기화
+    window.addEventListener('load', function() {
+        log('페이지 로드됨. 파일을 선택하고 "분석 시작" 버튼을 클릭하세요.');
     });
 </script>
 </body>
