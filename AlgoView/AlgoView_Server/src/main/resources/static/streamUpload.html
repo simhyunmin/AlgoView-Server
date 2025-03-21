@@ -1,428 +1,634 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>YouTube 분석 스트리밍</title>-->
+<!--    <style>-->
+<!--        /* 기존 스타일 그대로 유지 */-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h1>YouTube 분석 데모</h1>-->
+
+<!--&lt;!&ndash; 서버 URL 설정 &ndash;&gt;-->
+<!--<div class="server-config">-->
+<!--    <label for="server-url">서버 URL:</label>-->
+<!--    <input type="text" id="server-url" value="http://localhost:8000" style="width: 300px;">-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 분석 모드와 파일 업로드 폼 &ndash;&gt;-->
+<!--<div id="upload-form" class="panel">-->
+<!--    <h3>파일 업로드</h3>-->
+<!--    <div class="mode-selector">-->
+<!--        <label>-->
+<!--            <input type="radio" name="analysis-mode" value="stream" checked> 스트리밍 모드-->
+<!--        </label>-->
+<!--        <label>-->
+<!--            <input type="radio" name="analysis-mode" value="regular"> 일반 모드-->
+<!--        </label>-->
+<!--    </div>-->
+
+<!--    <div class="analysis-id-input">-->
+<!--        <label for="analysis-id">분석 ID:</label>-->
+<!--        <input type="text" id="analysis-id" value="test" style="width: 300px;">-->
+<!--    </div>-->
+
+<!--    <form id="analysis-form">-->
+<!--        <div>-->
+<!--            <label for="history-file">history.json:</label>-->
+<!--            <input type="file" id="history-file" accept=".json" required>-->
+<!--        </div>-->
+<!--        <div>-->
+<!--            <label for="subscriptions-file">subscriptions.json:</label>-->
+<!--            <input type="file" id="subscriptions-file" accept=".json" required>-->
+<!--        </div>-->
+<!--        <button type="submit">분석 시작</button>-->
+<!--    </form>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 분석 결과 패널 &ndash;&gt;-->
+<!--<div id="hourly-stats-panel" class="panel">-->
+<!--    <h3>시간대별 통계-->
+<!--        <span id="hourly-status" class="status-badge status-pending">대기 중</span>-->
+<!--    </h3>-->
+<!--    <div id="hourly-stats"></div>-->
+<!--</div>-->
+
+<!--<div id="keyword-panel" class="panel">-->
+<!--    <h3>키워드 분석-->
+<!--        <span id="keyword-status" class="status-badge status-pending">대기 중</span>-->
+<!--    </h3>-->
+<!--    <div id="keyword-stats"></div>-->
+<!--</div>-->
+
+<!--<div id="llm-panel" class="panel">-->
+<!--    <h3>LLM 분석-->
+<!--        <span id="llm-status" class="status-badge status-pending">대기 중</span>-->
+<!--    </h3>-->
+<!--    <div id="llm-analysis"></div>-->
+<!--</div>-->
+
+<!--<div id="log-panel" class="panel">-->
+<!--    <h3>로그</h3>-->
+<!--    <pre id="log-output" style="max-height: 200px; overflow-y: auto; background: #f0f0f0; padding: 10px;"></pre>-->
+<!--</div>-->
+
+<!--<script>-->
+<!--    // 로그 출력 함수-->
+<!--    function log(message) {-->
+<!--        const logOutput = document.getElementById('log-output');-->
+<!--        const timestamp = new Date().toLocaleTimeString();-->
+<!--        logOutput.textContent += `[${timestamp}] ${message}\n`;-->
+<!--        logOutput.scrollTop = logOutput.scrollHeight;-->
+<!--    }-->
+
+<!--    document.getElementById('analysis-form').addEventListener('submit', function(e) {-->
+<!--        e.preventDefault();-->
+
+<!--        // 폼 데이터 가져오기-->
+<!--        const historyFile = document.getElementById('history-file').files[0];-->
+<!--        const subscriptionsFile = document.getElementById('subscriptions-file').files[0];-->
+<!--        const serverUrl = document.getElementById('server-url').value.trim();-->
+<!--        const analysisId = document.getElementById('analysis-id').value.trim() || 'analysis-' + Date.now();-->
+<!--        const analysisMode = document.querySelector('input[name="analysis-mode"]:checked').value;-->
+
+<!--        if (!historyFile || !subscriptionsFile) {-->
+<!--            alert('두 파일 모두 선택해주세요.');-->
+<!--            return;-->
+<!--        }-->
+
+<!--        if (!serverUrl) {-->
+<!--            alert('서버 URL을 입력해주세요.');-->
+<!--            return;-->
+<!--        }-->
+
+<!--        // 상태 초기화-->
+<!--        resetPanels();-->
+
+<!--        // FormData 객체 생성 및 파일 추가-->
+<!--        const formData = new FormData();-->
+<!--        formData.append('history_file', historyFile);-->
+<!--        formData.append('subscriptions_file', subscriptionsFile);-->
+
+<!--        // 분석 모드에 따라 다른 처리-->
+<!--        if (analysisMode === 'stream') {-->
+<!--            // 스트리밍 분석 요청 시작-->
+<!--            streamAnalysis(formData, serverUrl, analysisId);-->
+<!--        } else {-->
+<!--            // 일반 분석 요청 시작-->
+<!--            regularAnalysis(formData, serverUrl, analysisId);-->
+<!--        }-->
+<!--    });-->
+
+<!--    function resetPanels() {-->
+<!--        // 패널 내용 초기화-->
+<!--        document.getElementById('hourly-stats').innerHTML = '';-->
+<!--        document.getElementById('keyword-stats').innerHTML = '';-->
+<!--        document.getElementById('llm-analysis').innerHTML = '';-->
+<!--        document.getElementById('log-output').textContent = '';-->
+
+<!--        // 상태 초기화-->
+<!--        ['hourly-status', 'keyword-status', 'llm-status'].forEach(id => {-->
+<!--            const element = document.getElementById(id);-->
+<!--            element.className = 'status-badge status-loading';-->
+<!--            element.innerHTML = '로딩 중 <div class="spinner"></div>';-->
+<!--        });-->
+
+<!--        log('분석 패널 초기화 완료');-->
+<!--    }-->
+
+<!--    function streamAnalysis(formData, serverUrl, analysisId) {-->
+<!--        const endpoint = `${serverUrl}/api/v1/analysis-stream/${analysisId}`;-->
+
+<!--        log(`스트리밍 분석 요청 시작: ${endpoint}`);-->
+
+<!--        const requestOptions = {-->
+<!--            method: 'POST',-->
+<!--            body: formData-->
+<!--        };-->
+
+<!--        fetch(endpoint, requestOptions)-->
+<!--            .then(response => {-->
+<!--                if (!response.ok) {-->
+<!--                    throw new Error(`HTTP error! status: ${response.status}`);-->
+<!--                }-->
+
+<!--                log(`서버 응답 성공: ${response.status} ${response.statusText}`);-->
+<!--                const reader = response.body.getReader();-->
+<!--                const decoder = new TextDecoder('utf-8');-->
+<!--                let buffer = '';-->
+
+<!--                function processChunk({ done, value }) {-->
+<!--                    if (done) {-->
+<!--                        log('스트림 수신 완료');-->
+<!--                        return;-->
+<!--                    }-->
+
+<!--                    const chunk = decoder.decode(value, { stream: true });-->
+<!--                    buffer += chunk;-->
+<!--                    log(`데이터 청크 수신: ${chunk.length} 바이트`);-->
+
+<!--                    const lines = buffer.split('\n');-->
+<!--                    buffer = lines.pop();-->
+
+<!--                    for (const line of lines) {-->
+<!--                        if (!line.trim()) continue;-->
+<!--                        try {-->
+<!--                            log(`JSON 파싱 시도: ${line.substring(0, 50)}...`);-->
+<!--                            const data = JSON.parse(line);-->
+<!--                            handleStreamData(data);-->
+<!--                        } catch (e) {-->
+<!--                            log(`JSON 파싱 오류: ${e.message}`);-->
+<!--                            console.error('JSON 파싱 오류:', e, line);-->
+<!--                        }-->
+<!--                    }-->
+
+<!--                    return reader.read().then(processChunk);-->
+<!--                }-->
+
+<!--                return reader.read().then(processChunk);-->
+<!--            })-->
+<!--            .catch(error => {-->
+<!--                log(`오류 발생: ${error.message}`);-->
+<!--                alert('분석 중 오류가 발생했습니다: ' + error.message);-->
+<!--            });-->
+<!--    }-->
+
+<!--    function regularAnalysis(formData, serverUrl, analysisId) {-->
+<!--        const endpoint = `${serverUrl}/api/v1/analysis/${analysisId}`;-->
+
+<!--        log(`일반 분석 요청 시작: ${endpoint}`);-->
+
+<!--        const requestOptions = {-->
+<!--            method: 'POST',-->
+<!--            body: formData-->
+<!--        };-->
+
+<!--        fetch(endpoint, requestOptions)-->
+<!--            .then(response => {-->
+<!--                if (!response.ok) {-->
+<!--                    throw new Error(`HTTP error! status: ${response.status}`);-->
+<!--                }-->
+<!--                return response.json();-->
+<!--            })-->
+<!--            .then(data => {-->
+<!--                log('서버 응답 성공');-->
+<!--                handleStreamData(data);-->
+<!--            })-->
+<!--            .catch(error => {-->
+<!--                log(`오류 발생: ${error.message}`);-->
+<!--                alert('분석 중 오류가 발생했습니다: ' + error.message);-->
+<!--            });-->
+<!--    }-->
+
+<!--    function handleStreamData(data) {-->
+<!--        if (data.status) {-->
+<!--            updateStatus(data.status);-->
+<!--        }-->
+<!--        if (data.hourly_stats) {-->
+<!--            updateHourlyStats(data.hourly_stats);-->
+<!--        }-->
+<!--        if (data.keywords) {-->
+<!--            updateKeywords(data.keywords);-->
+<!--        }-->
+<!--        if (data.llm_analysis) {-->
+<!--            updateLLMAnalysis(data.llm_analysis);-->
+<!--        }-->
+<!--    }-->
+
+<!--    function updateStatus(status) {-->
+<!--        // 상태 업데이트-->
+<!--        console.log(`상태 업데이트: ${status}`);-->
+<!--    }-->
+
+<!--    function updateHourlyStats(stats) {-->
+<!--        const hourlyStatsElement = document.getElementById('hourly-stats');-->
+<!--        hourlyStatsElement.innerHTML = JSON.stringify(stats, null, 2);-->
+<!--        document.getElementById('hourly-status').className = 'status-badge status-success';-->
+<!--        document.getElementById('hourly-status').innerHTML = '완료';-->
+<!--    }-->
+
+<!--    function updateKeywords(keywords) {-->
+<!--        const keywordStatsElement = document.getElementById('keyword-stats');-->
+<!--        keywordStatsElement.innerHTML = JSON.stringify(keywords, null, 2);-->
+<!--        document.getElementById('keyword-status').className = 'status-badge status-success';-->
+<!--        document.getElementById('keyword-status').innerHTML = '완료';-->
+<!--    }-->
+
+<!--    function updateLLMAnalysis(llmAnalysis) {-->
+<!--        const llmAnalysisElement = document.getElementById('llm-analysis');-->
+<!--        llmAnalysisElement.innerHTML = JSON.stringify(llmAnalysis, null, 2);-->
+<!--        document.getElementById('llm-status').className = 'status-badge status-success';-->
+<!--        document.getElementById('llm-status').innerHTML = '완료';-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
+
+
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>데이터 분석 스트리밍</title>
+    <title>YouTube 분석 스트리밍</title>
     <style>
+        /* 기본 스타일 */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            max-width: 1200px;
-            margin: 0 auto;
+            font-family: Arial, sans-serif;
             padding: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
             color: #333;
         }
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        .card {
-            border-radius: 8px;
-            border: 1px solid #ddd;
+
+        .panel {
+            background: #fff;
             padding: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .file-upload {
             margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        .upload-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+
+        .panel h3 {
+            margin-top: 0;
         }
-        .file-input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+
+        .mode-selector {
+            margin-bottom: 15px;
         }
-        .file-input-group label {
-            font-weight: bold;
+
+        .mode-selector label {
+            margin-right: 20px;
         }
-        .file-name {
-            margin-top: 5px;
-            font-size: 0.9em;
-            color: #555;
+
+        .status-badge {
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 12px;
         }
+
+        .status-pending {
+            background-color: #ffc107;
+            color: #fff;
+        }
+
+        .status-loading {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+
+        .status-success {
+            background-color: #28a745;
+            color: #fff;
+        }
+
+        .status-error {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        .spinner {
+            border: 2px solid transparent;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #log-output {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f0f0f0;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        input[type="text"], input[type="file"] {
+            width: 300px;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
         button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
+            padding: 10px 20px;
+            background-color: #007bff;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
         }
+
         button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .analysis-sections {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .analysis-section {
-            position: relative;
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .status-pending {
-            background-color: #f0f0f0;
-            color: #666;
-        }
-        .status-processing {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .status-completed {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .hour-bar {
-            display: flex;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-        .hour-bar-label {
-            width: 40px;
-            text-align: right;
-            margin-right: 10px;
-            font-size: 14px;
-            color: #555;
-        }
-        .hour-bar-fill {
-            height: 24px;
-            background-color: #4CAF50;
-            color: white;
-            display: flex;
-            align-items: center;
-            padding: 0 8px;
-            border-radius: 3px;
-            transition: width 0.5s ease-out;
-            min-width: 30px;
-        }
-        .keyword-item {
-            background-color: #f0f8ff;
-            padding: 6px 12px;
-            margin: 5px 0;
-            border-radius: 15px;
-            display: inline-block;
-            margin-right: 8px;
-            margin-bottom: 8px;
-        }
-        .keyword-count {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 12px;
-            margin-left: 5px;
-        }
-        .category-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .category-name {
-            font-weight: 500;
-        }
-        .category-count {
-            font-weight: bold;
-        }
-        #log-container {
-            margin-top: 20px;
-            max-height: 150px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            font-family: monospace;
-            font-size: 14px;
-        }
-        .log-entry {
-            margin: 3px 0;
-            padding: 2px 0;
-            border-bottom: 1px dotted #ddd;
-        }
-        .timestamp {
-            color: #666;
-            margin-right: 8px;
-        }
-        .progress-container {
-            width: 100%;
-            height: 8px;
-            background-color: #f0f0f0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        .progress-bar {
-            height: 100%;
-            width: 0;
-            background-color: #4CAF50;
-            transition: width 0.3s;
-        }
-        #llm-analysis {
-            margin-top: 15px;
-            white-space: pre-line;
-            line-height: 1.6;
-        }
-        @media (max-width: 768px) {
-            .analysis-sections {
-                grid-template-columns: 1fr;
-            }
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>유튜브 데이터 분석 스트리밍</h1>
 
-    <div class="card file-upload">
-        <h2>파일 업로드</h2>
-        <div class="progress-container">
-            <div class="progress-bar" id="upload-progress"></div>
-        </div>
-        <form id="upload-form" class="upload-form">
-            <div class="file-input-group">
-                <label for="historyFile">히스토리 파일 (JSON)</label>
-                <input type="file" id="historyFile" name="historyFile" accept=".json">
-                <div class="file-name" id="history-filename"></div>
-            </div>
+<h1>YouTube 분석 데모</h1>
 
-            <div class="file-input-group">
-                <label for="subscriptionsFile">구독 파일 (JSON/CSV)</label>
-                <input type="file" id="subscriptionsFile" name="subscriptionsFile" accept=".json,.csv">
-                <div class="file-name" id="subscriptions-filename"></div>
-            </div>
+<!-- 서버 URL 설정 -->
+<div class="server-config">
+    <label for="server-url">서버 URL:</label>
+    <input type="text" id="server-url" value="http://localhost:8000">
+</div>
 
-            <button type="submit" id="submit-button">분석 시작</button>
-        </form>
+<!-- 분석 모드와 파일 업로드 폼 -->
+<div id="upload-form" class="panel">
+    <h3>파일 업로드</h3>
+    <div class="mode-selector">
+        <label>
+            <input type="radio" name="analysis-mode" value="stream" checked> 스트리밍 모드
+        </label>
+        <label>
+            <input type="radio" name="analysis-mode" value="regular"> 일반 모드
+        </label>
     </div>
 
-    <div class="analysis-sections">
-        <div class="card analysis-section">
-            <div class="section-header">
-                <h2>시간대별 통계</h2>
-                <span class="status-badge status-pending" id="hourly-status">대기 중</span>
-            </div>
-            <div id="hourly-stats">데이터를 기다리는 중...</div>
-        </div>
-
-        <div class="card analysis-section">
-            <div class="section-header">
-                <h2>키워드 분석</h2>
-                <span class="status-badge status-pending" id="keyword-status">대기 중</span>
-            </div>
-            <div id="keyword-stats">데이터를 기다리는 중...</div>
-        </div>
-
-        <div class="card analysis-section">
-            <div class="section-header">
-                <h2>AI 분석 결과</h2>
-                <span class="status-badge status-pending" id="llm-status">대기 중</span>
-            </div>
-            <div id="llm-analysis">데이터를 기다리는 중...</div>
-        </div>
+    <div class="analysis-id-input">
+        <label for="analysis-id">분석 ID:</label>
+        <input type="text" id="analysis-id" value="test">
     </div>
 
-    <div class="card">
-        <h2>로그</h2>
-        <div id="log-container"></div>
-    </div>
+    <form id="analysis-form">
+        <div>
+            <label for="history-file">history.json:</label>
+            <input type="file" id="history-file" accept=".json" required>
+        </div>
+        <div>
+            <label for="subscriptions-file">subscriptions.json:</label>
+            <input type="file" id="subscriptions-file" accept=".json" required>
+        </div>
+        <button type="submit">분석 시작</button>
+    </form>
+</div>
+
+<!-- 분석 결과 패널 -->
+<div id="hourly-stats-panel" class="panel">
+    <h3>시간대별 통계
+        <span id="hourly-status" class="status-badge status-pending">대기 중</span>
+    </h3>
+    <div id="hourly-stats"></div>
+
+    <!-- 시간대별 차트 추가 -->
+    <canvas id="hourly-chart" width="400" height="200"></canvas>
+</div>
+
+<div id="keyword-panel" class="panel">
+    <h3>키워드 분석
+        <span id="keyword-status" class="status-badge status-pending">대기 중</span>
+    </h3>
+    <div id="keyword-stats"></div>
+
+    <!-- 키워드 분석 차트 추가 -->
+    <canvas id="keyword-chart" width="400" height="200"></canvas>
+</div>
+
+<div id="llm-panel" class="panel">
+    <h3>LLM 분석
+        <span id="llm-status" class="status-badge status-pending">대기 중</span>
+    </h3>
+    <div id="llm-analysis"></div>
+</div>
+
+<div id="log-panel" class="panel">
+    <h3>로그</h3>
+    <pre id="log-output"></pre>
 </div>
 
 <script>
-    // 전역 변수
-    let eventSource = null;
-    let analysisId = null;
-
-    // 로그 함수
+    // 로그 출력 함수
     function log(message) {
-        const logContainer = document.getElementById('log-container');
-        const now = new Date();
-        const timeString = now.toLocaleTimeString();
-
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `<span class="timestamp">${timeString}</span> ${message}`;
-
-        logContainer.appendChild(logEntry);
-        logContainer.scrollTop = logContainer.scrollHeight;
+        const logOutput = document.getElementById('log-output');
+        const timestamp = new Date().toLocaleTimeString();
+        logOutput.textContent += `[${timestamp}] ${message}\n`;
+        logOutput.scrollTop = logOutput.scrollHeight;
     }
 
-    // 파일 선택 이벤트 처리
-    document.getElementById('historyFile').addEventListener('change', function() {
-        const filename = this.files.length > 0 ? this.files[0].name : '선택된 파일 없음';
-        document.getElementById('history-filename').textContent = filename;
-    });
-
-    document.getElementById('subscriptionsFile').addEventListener('change', function() {
-        const filename = this.files.length > 0 ? this.files[0].name : '선택된 파일 없음';
-        document.getElementById('subscriptions-filename').textContent = filename;
-    });
-
-    // 폼 제출 처리
-    document.getElementById('upload-form').addEventListener('submit', function(e) {
+    document.getElementById('analysis-form').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        const historyFile = document.getElementById('historyFile').files[0];
-        const subscriptionsFile = document.getElementById('subscriptionsFile').files[0];
+        // 폼 데이터 가져오기
+        const historyFile = document.getElementById('history-file').files[0];
+        const subscriptionsFile = document.getElementById('subscriptions-file').files[0];
+        const serverUrl = document.getElementById('server-url').value.trim();
+        const analysisId = document.getElementById('analysis-id').value.trim() || 'analysis-' + Date.now();
+        const analysisMode = document.querySelector('input[name="analysis-mode"]:checked').value;
 
         if (!historyFile || !subscriptionsFile) {
-            alert('두 파일을 모두 선택해주세요.');
+            alert('두 파일 모두 선택해주세요.');
             return;
         }
 
-        // 분석 ID 생성 (간단한 방법)
-        analysisId = Date.now().toString();
-
-        // 폼 데이터 구성
-        const formData = new FormData();
-        formData.append('historyFile', historyFile);
-        formData.append('subscriptionsFile', subscriptionsFile);
-
-        // 진행 표시 초기화
-        document.getElementById('upload-progress').style.width = '0%';
-
-        // 상태 초기화
-        document.getElementById('hourly-status').className = 'status-badge status-pending';
-        document.getElementById('hourly-status').textContent = '대기 중';
-        document.getElementById('keyword-status').className = 'status-badge status-pending';
-        document.getElementById('keyword-status').textContent = '대기 중';
-        document.getElementById('llm-status').className = 'status-badge status-pending';
-        document.getElementById('llm-status').textContent = '대기 중';
-
-        document.getElementById('hourly-stats').textContent = '데이터를 기다리는 중...';
-        document.getElementById('keyword-stats').textContent = '데이터를 기다리는 중...';
-        document.getElementById('llm-analysis').textContent = '데이터를 기다리는 중...';
-
-        // 로그 초기화
-        document.getElementById('log-container').innerHTML = '';
-
-        // 제출 버튼 비활성화
-        const submitButton = document.getElementById('submit-button');
-        submitButton.disabled = true;
-        submitButton.textContent = '분석 중...';
-
-        log('파일 업로드 시작');
-
-        // 파일 업로드 AJAX 요청
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `/api/upload`, true);
-
-        // 업로드 진행 상황 처리
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                document.getElementById('upload-progress').style.width = percentComplete + '%';
-            }
-        };
-
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                log('파일 업로드 완료, 분석 시작');
-
-                // 업로드 완료 후 서버 보냄 이벤트(SSE) 연결 시작
-                startEventSource(analysisId);
-            } else {
-                log('오류: ' + xhr.statusText);
-                submitButton.disabled = false;
-                submitButton.textContent = '분석 시작';
-                alert('파일 업로드 중 오류가 발생했습니다.');
-            }
-        };
-
-        xhr.onerror = function() {
-            log('네트워크 오류 발생');
-            submitButton.disabled = false;
-            submitButton.textContent = '분석 시작';
-            alert('네트워크 오류가 발생했습니다.');
-        };
-
-        xhr.send(formData);
-    });
-
-    // 서버 보낸 이벤트(SSE) 연결 시작
-    function startEventSource(test) {
-        // 기존 연결이 있으면 닫기
-        if (eventSource) {
-            eventSource.close();
+        if (!serverUrl) {
+            alert('서버 URL을 입력해주세요.');
+            return;
         }
 
-        log(`분석 ID: test로 스트리밍 연결 시작`);
+        // 상태 초기화
+        resetPanels();
 
-        // 새 SSE 연결 설정
-        eventSource = new EventSource(`/api/analysis-stream/test`);
+        // FormData 객체 생성 및 파일 추가
+        const formData = new FormData();
+        formData.append('history_file', historyFile);
+        formData.append('subscriptions_file', subscriptionsFile);
 
-        // 연결 성공 처리
-        eventSource.onopen = function() {
-            log('스트리밍 연결 성공');
-        };
+        // 분석 모드에 따라 다른 처리
+        if (analysisMode === 'stream') {
+            // 스트리밍 분석 요청 시작
+            streamAnalysis(formData, serverUrl, analysisId);
+        } else {
+            // 일반 분석 요청 시작
+            regularAnalysis(formData, serverUrl, analysisId);
+        }
+    });
 
-        // 시간대별 통계 데이터 처리
-        eventSource.addEventListener('hourlyStats', function(event) {
-            log('시간대별 통계 데이터 수신');
-            const data = JSON.parse(event.data);
-            updateHourlyStats(data);
+    function resetPanels() {
+        // 패널 내용 초기화
+        document.getElementById('hourly-stats').innerHTML = '';
+        document.getElementById('keyword-stats').innerHTML = '';
+        document.getElementById('llm-analysis').innerHTML = '';
+        document.getElementById('log-output').textContent = '';
+
+        // 상태 초기화
+        ['hourly-status', 'keyword-status', 'llm-status'].forEach(id => {
+            const element = document.getElementById(id);
+            element.className = 'status-badge status-loading';
+            element.innerHTML = '로딩 중 <div class="spinner"></div>';
         });
 
-        // 키워드 데이터 처리
-        eventSource.addEventListener('keywordFrequency', function(event) {
-            log('키워드 분석 데이터 수신');
-            const data = JSON.parse(event.data);
-            updateKeywords(data);
-        });
-
-        // LLM 분석 결과 처리
-        eventSource.addEventListener('llmAnalysis', function(event) {
-            log('AI 분석 결과 수신');
-            const data = JSON.parse(event.data);
-            updateLLMAnalysis(data);
-        });
-
-        // 분석 완료 처리
-        eventSource.addEventListener('analysisComplete', function() {
-            log('분석 완료');
-            eventSource.close();
-
-            const submitButton = document.getElementById('submit-button');
-            submitButton.disabled = false;
-            submitButton.textContent = '분석 시작';
-
-            log('스트리밍 연결 종료');
-        });
-
-        // 오류 처리
-        eventSource.onerror = function() {
-            log('스트리밍 연결 오류');
-            eventSource.close();
-
-            const submitButton = document.getElementById('submit-button');
-            submitButton.disabled = false;
-            submitButton.textContent = '분석 시작';
-        };
+        log('분석 패널 초기화 완료');
     }
 
-    // 시간대별 통계 업데이트
+    function streamAnalysis(formData, serverUrl, analysisId) {
+        const endpoint = `${serverUrl}/api/v1/analysis-stream/${analysisId}`;
+
+        log(`스트리밍 분석 요청 시작: ${endpoint}`);
+
+        const requestOptions = {
+            method: 'POST',
+            body: formData
+        };
+
+        fetch(endpoint, requestOptions)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                log(`서버 응답 성공: ${response.status} ${response.statusText}`);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                function processChunk({ done, value }) {
+                    if (done) {
+                        log('스트림 수신 완료');
+                        return;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    log(`데이터 청크 수신: ${chunk.length} 바이트`);
+
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            log(`JSON 파싱 시도: ${line.substring(0, 50)}...`);
+                            const data = JSON.parse(line);
+                            handleStreamData(data);
+                        } catch (e) {
+                            log(`JSON 파싱 오류: ${e.message}`);
+                            console.error('JSON 파싱 오류:', e, line);
+                        }
+                    }
+
+                    return reader.read().then(processChunk);
+                }
+
+                return reader.read().then(processChunk);
+            })
+            .catch(error => {
+                log(`오류 발생: ${error.message}`);
+                alert('분석 중 오류가 발생했습니다: ' + error.message);
+            });
+    }
+
+    function regularAnalysis(formData, serverUrl, analysisId) {
+        const endpoint = `${serverUrl}/api/v1/analysis/${analysisId}`;
+
+        log(`일반 분석 요청 시작: ${endpoint}`);
+
+        const requestOptions = {
+            method: 'POST',
+            body: formData
+        };
+
+        fetch(endpoint, requestOptions)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                log('서버 응답 성공');
+                handleStreamData(data);
+            })
+            .catch(error => {
+                log(`오류 발생: ${error.message}`);
+                alert('분석 중 오류가 발생했습니다: ' + error.message);
+            });
+    }
+
+    function handleStreamData(data) {
+        log(`데이터 처리: function=${data.function}`);
+        console.log('Received data:', data);
+
+        const functionType = data.function;
+
+        // 함수 유형에 따라 처리
+        switch (functionType) {
+            case 'hourly_stats':
+                updateHourlyStats(data);
+                break;
+            case 'keyword_frequency':
+                updateKeywords(data);
+                break;
+            case 'llm_analysis':
+                updateLLMAnalysis(data);
+                break;
+            case 'completion':
+                log(`분석 완료: ${data.message}`);
+                break;
+            case 'error':
+                log(`서버 오류: ${data.message}`);
+                alert('서버 오류: ' + data.message);
+                break;
+            default:
+                log(`알 수 없는 함수 유형: ${functionType}`);
+        }
+    }
+
     function updateHourlyStats(data) {
         const hourlyStats = document.getElementById('hourly-stats');
         const statusBadge = document.getElementById('hourly-status');
@@ -434,36 +640,63 @@
         log('시간대별 통계 업데이트 시작');
 
         // 데이터가 없는 경우
-        if (!data.data || !data.data.hourlyStats || data.data.hourlyStats.length === 0) {
+        if (!data.data || data.data.length === 0) {
             hourlyStats.textContent = '시간대별 데이터가 없습니다.';
             return;
         }
 
         // 최대 조회수 찾기
-        const maxViews = Math.max(...data.data.hourlyStats.map(item => item.totalViews));
+        const maxViews = Math.max(...data.data.map(item => item.totalViews));
+
+        // 차트 데이터를 준비
+        const hours = data.data.map(hour => hour.hour);
+        const views = data.data.map(hour => hour.totalViews);
 
         // HTML 구성
         let html = '';
 
-        data.data.hourlyStats.forEach(hour => {
+        data.data.forEach(hour => {
             // 퍼센트 계산 (최대값 대비)
             const percentage = maxViews === 0 ? 0 : (hour.totalViews / maxViews * 100);
 
             html += `
-                    <div class="hour-bar">
-                        <div class="hour-bar-label">${hour.hour}시</div>
-                        <div class="hour-bar-fill" style="width: ${percentage}%">
-                            ${hour.totalViews > 0 ? hour.totalViews : ''}
-                        </div>
-                    </div>
-                `;
+            <div class="hour-bar">
+                <div class="hour-bar-label">${hour.hour}시</div>
+                <div class="hour-bar-fill" style="width: ${percentage}%">
+                    ${hour.totalViews > 0 ? hour.totalViews : ''}
+                </div>
+            </div>
+        `;
         });
 
         hourlyStats.innerHTML = html;
+
+        // 차트 업데이트
+        const ctx = document.getElementById('hourly-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: hours,
+                datasets: [{
+                    label: '조회수',
+                    data: views,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: '시간' } },
+                    y: { title: { display: true, text: '조회수' } }
+                }
+            }
+        });
+
         log('시간대별 통계 업데이트 완료');
     }
 
-    // 키워드 업데이트
     function updateKeywords(data) {
         const keywordStats = document.getElementById('keyword-stats');
         const statusBadge = document.getElementById('keyword-status');
@@ -475,30 +708,55 @@
         log('키워드 분석 업데이트 시작');
 
         // 데이터가 없는 경우
-        if (!data.data || !data.data.keywordFrequency || data.data.keywordFrequency.length === 0) {
+        if (!data.data || data.data.length === 0) {
             keywordStats.textContent = '키워드 데이터가 없습니다.';
             return;
         }
 
         // 빈도 기준 내림차순 정렬
-        const sortedKeywords = [...data.data.keywordFrequency].sort((a, b) => b.frequency - a.frequency);
+        const sortedKeywords = [...data.data].sort((a, b) => b.frequency - a.frequency);
 
         // HTML 구성
         let html = '';
+        const keywords = sortedKeywords.map(kw => kw.keyword);
+        const frequencies = sortedKeywords.map(kw => kw.frequency);
 
         sortedKeywords.forEach(kw => {
             html += `
-                    <div class="keyword-item">
-                        ${kw.keyword} <span class="keyword-count">${kw.frequency}</span>
-                    </div>
-                `;
+            <div class="keyword-item">
+                ${kw.keyword} <span class="keyword-count">${kw.frequency}</span>
+            </div>
+        `;
         });
 
         keywordStats.innerHTML = html;
+
+        // 키워드 분석 차트 업데이트
+        const ctx = document.getElementById('keyword-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: keywords,
+                datasets: [{
+                    label: '빈도수',
+                    data: frequencies,
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: '키워드' } },
+                    y: { title: { display: true, text: '빈도수' } }
+                }
+            }
+        });
+
         log('키워드 분석 업데이트 완료');
     }
 
-    // LLM 분석 결과 업데이트
     function updateLLMAnalysis(data) {
         const llmAnalysis = document.getElementById('llm-analysis');
         const statusBadge = document.getElementById('llm-status');
@@ -507,22 +765,23 @@
         statusBadge.className = 'status-badge status-completed';
         statusBadge.textContent = '완료';
 
-        log('AI 분석 업데이트 시작');
+        log('LLM 분석 업데이트 시작');
 
         // 데이터가 없는 경우
-        if (!data.data || !data.data.llmAnalysis) {
-            llmAnalysis.textContent = 'AI 분석 데이터가 없습니다.';
+        if (!data.data) {
+            llmAnalysis.textContent = 'LLM 분석 데이터가 없습니다.';
             return;
         }
 
-        llmAnalysis.textContent = data.data.llmAnalysis;
-        log('AI 분석 업데이트 완료');
+        // 텍스트 설정
+        llmAnalysis.textContent = data.data;
+        log('LLM 분석 업데이트 완료');
     }
 
-    // 페이지 로드 시 초기화
-    window.addEventListener('load', function() {
-        log('페이지 로드됨. 파일을 선택하고 "분석 시작" 버튼을 클릭하세요.');
-    });
 </script>
+
 </body>
 </html>
+
+
+

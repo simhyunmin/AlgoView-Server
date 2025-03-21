@@ -87,6 +87,8 @@ public class AnalysisController {
         }
     }
 
+
+
     /**
      * CSV 파일을 JSON 형식으로 변환
      * 예상 CSV 형식: 채널 ID, 채널 URL, 채널 제목 (헤더 포함)
@@ -143,12 +145,17 @@ public class AnalysisController {
         for (int i = 0; i < line.length(); i++) {
             char currentChar = line.charAt(i);
 
+            // 따옴표를 만나면 상태 변경
             if (currentChar == '\"') {
                 inQuotes = !inQuotes;
-            } else if (currentChar == ',' && !inQuotes) {
+            }
+            // 쉼표는 따옴표 안에 있지 않으면 구분자로 사용
+            else if (currentChar == ',' && !inQuotes) {
                 result.add(currentValue.toString().replace("\"", "").trim());
                 currentValue = new StringBuilder();
-            } else {
+            }
+            // 그 외에는 값을 이어 붙임
+            else {
                 currentValue.append(currentChar);
             }
         }
@@ -158,4 +165,9 @@ public class AnalysisController {
 
         return result.toArray(new String[0]);
     }
+
+
+
+
+
 }
