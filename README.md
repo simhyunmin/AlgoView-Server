@@ -1,6 +1,5 @@
 # AlgoView
 
----
 - **개인 맞춤형 유튜브 분석 및 인사이트 제공 플랫폼**
 
 <br>
@@ -8,7 +7,6 @@
 
 ## 💬 서비스 주요 기능
 
----
 > **1. 구글 Takeout을 통한 시청 기록 및 구독 정보 수집**
 - Google Takeout을 활용하여 사용자의 시청 기록 및 구독 정보를 수집합니다.
 - 영상 제목, 설명, 스크립트, 댓글 데이터에 대한 분석을 수행합니다.
@@ -30,7 +28,6 @@
 
 ## 🛠️ 기술 스택
 
----
 
 - **Front** :  <img src="https://img.shields.io/badge/React.js-61DAFB?style=flat-square&logo=React&logoColor=black"/>  <img src="https://img.shields.io/badge/HTML-E34F26?style=flat-square&logo=HTML5&logoColor=white"/>  <img src="https://img.shields.io/badge/CSS-1572B6?style=flat-square&logo=CSS3&logoColor=white"/>
 - **Backend** :  <img src="https://img.shields.io/badge/Java-007396?style=flat-square&logo=Java&logoColor=white"/>  <img src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=SpringBoot&logoColor=white"/>  <img src="https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=flat-square&logo=Spring&logoColor=white"/>  <img src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/>
@@ -44,7 +41,6 @@
 
 ## ⚙️ 워크플로
 
----
 ![img.png](img/img.png)
 
 
