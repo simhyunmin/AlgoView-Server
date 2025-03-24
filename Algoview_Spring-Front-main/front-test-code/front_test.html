@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Analysis Streaming</title>
+    <style>
+        :root {
+            --primary-color: #4a6cf7;
+            --primary-hover: #3a5ce4;
+            --dark-color: #1e293b;
+            --text-color: #64748b;
+            --light-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--dark-color);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: var(--dark-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .description {
+            color: var(--text-color);
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .server-config {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-group label {
+            margin-bottom: 6px;
+            color: var(--dark-color);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .input-group input[type="text"] {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+
+        .input-group input[type="text"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+
+        .form-group input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: var(--light-bg);
+            cursor: pointer;
+            transition: border 0.3s;
+        }
+
+        .form-group input[type="file"]:hover {
+            border-color: var(--primary-color);
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            background-color: var(--text-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.3);
+        }
+
+        #streaming-clearBtn {
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        #streaming-clearBtn:hover {
+            background-color: var(--border-color);
+        }
+
+        .response-container {
+            height: 500px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--light-bg);
+            padding: 0;
+            position: relative;
+        }
+
+        .response-container > p {
+            padding: 20px;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .event-item {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background-color: var(--card-bg);
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .event-item h3 {
+            font-size: 1.2rem;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .event-item .event-badge {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+        }
+
+        .event-item pre {
+            background-color: var(--light-bg);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .debug-message {
+            color: #aaa;
+            font-size: 0.75rem;
+            margin: 5px 20px;
+            font-family: monospace;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 5px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 200px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Function-specific colors */
+        .event-item.hourly_stats {
+            border-left-color: #3b82f6; /* blue */
+        }
+
+        .event-item.keyword_frequency {
+            border-left-color: #10b981; /* green */
+        }
+
+        .event-item.llm_analysis {
+            border-left-color: #8b5cf6; /* purple */
+        }
+
+        .event-item.completion {
+            border-left-color: #f59e0b; /* amber */
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .server-config {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube Viewing Analysis</h1>
+            <p class="description">Upload your YouTube history and subscriptions to analyze your viewing patterns.</p>
+        </header>
+
+        <div class="card">
+            <div class="server-config">
+                <div class="input-group">
+                    <label for="server-url">Spring Server URL:</label>
+                    <input type="text" id="server-url" value="http://localhost:8080">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="debug-mode">
+                    <label for="debug-mode">Show Debug Info</label>
+                </div>
+            </div>
+
+            <h2>Upload Files for Analysis</h2>
+            
+            <div class="form-group">
+                <label for="streaming-historyFile">History File (JSON):</label>
+                <input type="file" id="streaming-historyFile" accept=".json">
+            </div>
+            
+            <div class="form-group">
+                <label for="streaming-subscriptionsFile">Subscriptions File (JSON or CSV):</label>
+                <input type="file" id="streaming-subscriptionsFile" accept=".json,.csv">
+            </div>
+            
+            <div class="actions">
+                <button id="streaming-uploadBtn">Start Analysis</button>
+                <button id="streaming-clearBtn">Clear Results</button>
+            </div>
+            
+            <div class="response-container" id="streaming-response-container">
+                <p>Analysis results will appear here after uploading files...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get server URL from input field
+        function getServerUrl() {
+            return document.getElementById('server-url').value.trim();
+        }
+        
+        // Check if debug mode is enabled
+        function isDebugMode() {
+            return document.getElementById('debug-mode').checked;
+        }
+        
+        // Add debug message to response container
+        function addDebugMessage(message) {
+            if (!isDebugMode()) return;
+            
+            const debugElement = document.createElement('div');
+            debugElement.className = 'debug-message';
+            debugElement.textContent = message;
+            document.getElementById('streaming-response-container').appendChild(debugElement);
+        }
+        
+        // ============ STREAMING UPLOAD FUNCTIONALITY ============
+        const streamingUploadBtn = document.getElementById('streaming-uploadBtn');
+        const streamingClearBtn = document.getElementById('streaming-clearBtn');
+        const streamingResponseContainer = document.getElementById('streaming-response-container');
+        const streamingHistoryFileInput = document.getElementById('streaming-historyFile');
+        const streamingSubscriptionsFileInput = document.getElementById('streaming-subscriptionsFile');
+        
+        let eventCount = 0;
+        
+        streamingUploadBtn.addEventListener('click', async () => {
+            // Validate file inputs
+            if (!streamingHistoryFileInput.files[0] || !streamingSubscriptionsFileInput.files[0]) {
+                alert('Please select both history and subscriptions files');
+                return;
+            }
+            
+            // Clear previous results
+            streamingResponseContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Processing your data...</p></div>';
+            
+            // Disable upload button
+            streamingUploadBtn.disabled = true;
+            
+            // Reset event counter
+            eventCount = 0;
+            
+            try {
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('historyFile', streamingHistoryFileInput.files[0]);
+                formData.append('subscriptionsFile', streamingSubscriptionsFileInput.files[0]);
+                
+                // Get streaming URL from the input field
+                const springServerUrl = getServerUrl();
+                const streamUrl = `${springServerUrl}/api/stream/upload`;
+                
+                console.log("Sending streaming request to:", streamUrl);
+                addDebugMessage(`Sending request to: ${streamUrl}`);
+                
+                // Make the request with fetch
+                const response = await fetch(streamUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                // Clear the loading indicator
+                streamingResponseContainer.innerHTML = '';
+                
+                // Read the stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        console.log('Stream complete');
+                        addDebugMessage('Stream complete');
+                        
+                        // Process any remaining data in buffer
+                        if (buffer.trim().length > 0) {
+                            processAllPossibleJSON(buffer.trim());
+                        }
+                        break;
+                    }
+                    
+                    // Decode the current chunk and add to buffer
+                    const chunk = decoder.decode(value, { stream: true });
+                    console.log("Received chunk:", chunk);
+                    addDebugMessage(`Received chunk: ${chunk.length} bytes`);
+                    
+                    buffer += chunk;
+                    
+                    // Process as much of the buffer as we can
+                    buffer = processChunkBuffer(buffer);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                streamingResponseContainer.innerHTML = `<p style="color: var(--error-color); padding: 20px;">Error: ${error.message}</p>`;
+            } finally {
+                // Re-enable upload button
+                streamingUploadBtn.disabled = false;
+            }
+        });
+        
+        streamingClearBtn.addEventListener('click', () => {
+            streamingResponseContainer.innerHTML = '<p>Analysis results will appear here after uploading files...</p>';
+            eventCount = 0;
+        });
+        
+        // Process buffer containing multiple JSON objects or fragments
+        function processChunkBuffer(buffer) {
+            addDebugMessage(`Processing buffer (${buffer.length} bytes)`);
+            
+            // Try different parsing approaches
+            
+            // 1. First try to extract data: prefixed JSON objects
+            if (buffer.includes('data:')) {
+                // Extract all data: prefixes followed by JSON
+                const dataSegments = buffer.split('data:');
+                
+                // Skip the first segment as it might be empty or a fragment
+                if (dataSegments.length > 1) {
+                    // Keep the first part (might contain fragments)
+                    let remainingBuffer = dataSegments[0];
+                    
+                    // Process all complete segments
+                    for (let i = 1; i < dataSegments.length; i++) {
+                        const segment = dataSegments[i].trim();
+                        
+                        // Skip empty segments
+                        if (!segment) continue;
+                        
+                        try {
+                            const jsonData = JSON.parse(segment);
+                            displayStreamingEvent(jsonData);
+                            addDebugMessage(`Successfully parsed JSON with data: prefix`);
+                        } catch (e) {
+                            // Might be a partial JSON or invalid
+                            addDebugMessage(`Failed to parse data: segment: ${e.message}`);
+                            
+                            // If this is the last segment, it might be incomplete
+                            if (i === dataSegments.length - 1) {
+                                remainingBuffer += 'data:' + segment;
+                            }
+                        }
+                    }
+                    
+                    return remainingBuffer;
+                }
+            }
+            
+            // 2. Try to find complete JSON objects without data: prefix
+            let remainingBuffer = buffer;
+            let jsonFound = false;
+            
+            // Try to find objects with { ... } pattern
+            let objectStart = remainingBuffer.indexOf('{');
+            while (objectStart !== -1) {
+                // Find the matching closing brace
+                let openBraces = 0;
+                let objectEnd = -1;
+                
+                for (let i = objectStart; i < remainingBuffer.length; i++) {
+                    if (remainingBuffer[i] === '{') openBraces++;
+                    else if (remainingBuffer[i] === '}') {
+                        openBraces--;
+                        if (openBraces === 0) {
+                            objectEnd = i + 1;
+                            break;
+                        }
+                    }
+                }
+                
+                if (objectEnd !== -1) {
+                    // We found a complete JSON object
+                    const jsonStr = remainingBuffer.substring(objectStart, objectEnd);
+                    try {
+                        const jsonData = JSON.parse(jsonStr);
+                        displayStreamingEvent(jsonData);
+                        jsonFound = true;
+                        addDebugMessage(`Successfully parsed raw JSON object`);
+                        
+                        // Remove this object from the buffer
+                        remainingBuffer = remainingBuffer.substring(0, objectStart) + 
+                                          remainingBuffer.substring(objectEnd);
+                        
+                        // Look for the next JSON object
+                        objectStart = remainingBuffer.indexOf('{');
+                    } catch (e) {
+                        // Not valid JSON, move to the next potential object
+                        addDebugMessage(`Failed to parse raw JSON: ${e.message}`);
+                        objectStart = remainingBuffer.indexOf('{', objectStart + 1);
+                    }
+                } else {
+                    // No complete object found, exit the loop
+                    break;
+                }
+            }
+            
+            return remainingBuffer;
+        }
+        
+        // Try to extract and process all possible JSON from a string
+        function processAllPossibleJSON(str) {
+            // Try multiple approaches
+            
+            // 1. Try as a complete JSON object
+            try {
+                const jsonData = JSON.parse(str);
+                displayStreamingEvent(jsonData);
+                addDebugMessage(`Processed complete JSON string`);
+                return;
+            } catch (e) {
+                addDebugMessage(`Not a complete JSON string: ${e.message}`);
+            }
+            
+            // 2. Try finding JSON objects inside the string
+            let foundObjects = false;
+            let objectStart = str.indexOf('{');
+            
+            while (objectStart !== -1) {
+                // Find the potential end of this object
+                let openBraces = 0;
+                let objectEnd = -1;
+                
+                for (let i = objectStart; i < str.length; i++) {
+                    if (str[i] === '{') openBraces++;
+                    else if (str[i] === '}') {
+                        openBraces--;
+                        if (openBraces === 0) {
+                            objectEnd = i + 1;
+                            break;
+                        }
+                    }
+                }
+                
+                if (objectEnd !== -1) {
+                    // We found a potential JSON object
+                    const jsonStr = str.substring(objectStart, objectEnd);
+                    try {
+                        const jsonData = JSON.parse(jsonStr);
+                        displayStreamingEvent(jsonData);
+                        foundObjects = true;
+                        addDebugMessage(`Extracted JSON object from string`);
+                    } catch (e) {
+                        addDebugMessage(`Failed to parse extracted object: ${e.message}`);
+                    }
+                    
+                    // Move past this object
+                    objectStart = str.indexOf('{', objectEnd);
+                } else {
+                    // No more complete objects
+                    break;
+                }
+            }
+            
+            // 3. If we found data: prefix, try parsing what follows
+            if (str.includes('data:')) {
+                const parts = str.split('data:');
+                for (let i = 1; i < parts.length; i++) {  // Skip first part before data:
+                    if (!parts[i].trim()) continue;
+                    
+                    try {
+                        const jsonData = JSON.parse(parts[i].trim());
+                        displayStreamingEvent(jsonData);
+                        foundObjects = true;
+                        addDebugMessage(`Parsed JSON after data: prefix`);
+                    } catch (e) {
+                        addDebugMessage(`Failed to parse after data: prefix: ${e.message}`);
+                    }
+                }
+            }
+            
+            if (!foundObjects) {
+                addDebugMessage(`Could not find any valid JSON in string: ${str.substring(0, 50)}...`);
+            }
+        }
+        
+        // Get timestamp formatted
+        function getFormattedTime() {
+            const now = new Date();
+            return now.toLocaleTimeString();
+        }
+        
+        // Display a streaming event in the UI
+        function displayStreamingEvent(eventData) {
+            eventCount++;
+            
+            const eventElement = document.createElement('div');
+            eventElement.className = 'event-item';
+            
+            // Add a class based on function name if available
+            if (eventData.function) {
+                eventElement.classList.add(eventData.function);
+            }
+            
+            // Format the event based on its structure
+            let title = eventData.function || 'Unknown';
+            title = title.charAt(0).toUpperCase() + title.slice(1).replace(/_/g, ' ');
+            
+            let eventHtml = `
+                <h3>
+                    ${title}
+                    <span class="event-badge">#${eventCount}</span>
+                </h3>
+            `;
+            
+            // If the event is an object, format its properties
+            if (typeof eventData === 'object') {
+                for (const [key, value] of Object.entries(eventData)) {
+                    // Skip function property as it's already in the title
+                    if (key === 'function') continue;
+                    
+                    // Format value based on type
+                    let displayValue = value;
+                    if (typeof value === 'object') {
+                        displayValue = '<pre>' + JSON.stringify(value, null, 2) + '</pre>';
+                    } else if (typeof value === 'string' && value.length > 100) {
+                        // For long strings, use pre tag for better formatting
+                        displayValue = '<pre>' + value + '</pre>';
+                    }
+                    
+                    eventHtml += `<p><strong>${key}:</strong> ${displayValue}</p>`;
+                }
+            } else {
+                // If it's not an object, just display it
+                eventHtml += `<p>${eventData}</p>`;
+            }
+            
+            eventElement.innerHTML = eventHtml;
+            streamingResponseContainer.appendChild(eventElement);
+            
+            // Scroll to bottom to show newest event
+            streamingResponseContainer.scrollTop = streamingResponseContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

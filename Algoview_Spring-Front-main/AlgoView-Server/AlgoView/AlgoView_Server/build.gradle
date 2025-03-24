@@ -1,0 +1,90 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.2.2' // 최신 안정 버전으로 다운그레이드
+	id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'AlgoView'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring Boot 스타터
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// 멀티파트 업로드 처리
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+
+	//HttpClinet 의존성
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
+
+
+	//SpringDoc OpenAPI 의존성
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+	//OAuth2 및 security 의존성
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Google API - 더 최신 버전으로 업데이트
+	implementation 'com.google.api-client:google-api-client:2.2.0'
+	implementation 'com.google.oauth-client:google-oauth-client-jetty:1.34.1'
+	implementation 'com.google.apis:google-api-services-youtube:v3-rev20230123-2.0.0'
+	implementation 'com.google.code.gson:gson:2.10.1'
+
+	//postgreSQL 설정
+	implementation 'org.postgresql:postgresql:42.5.0'
+
+	//jwt 의존성
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+	//Lombok 의존성
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	//Thymeleaf 템플릿 설정
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+	// P6Spy Spring Boot Starter 의존성
+	implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
+
+	//jsoup 의존성 추가
+	implementation 'org.jsoup:jsoup:1.15.3'
+
+	//csv 의존성 추가
+	implementation 'org.apache.commons:commons-csv:1.9.0'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	//분산 캐시 라이브러리 의존성 추가
+	implementation("org.infinispan:infinispan-core:12.0.1.Final")
+	implementation("org.infinispan:infinispan-commons:12.0.1.Final")
+	implementation("org.infinispan:infinispan-marshaller-protostuff:12.0.1.Final")
+	implementation("org.jboss.marshalling:jboss-marshalling-osgi:2.0.10.Final")
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
