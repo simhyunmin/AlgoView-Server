@@ -12,6 +12,15 @@
           </set>
         </option>
       </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/Algoview_Spring-Front-main/AlgoView-Server/AlgoView/AlgoView_Server" />
+        <option name="gradleJvm" value="homebrew-21" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/../../../코딩/개인 프로젝트/알고뷰 서버/Algoview_Spring-Front-main/AlgoView-Server/AlgoView/AlgoView_Server" />
+          </set>
+        </option>
+      </GradleProjectSettings>
     </option>
   </component>
 </project>
